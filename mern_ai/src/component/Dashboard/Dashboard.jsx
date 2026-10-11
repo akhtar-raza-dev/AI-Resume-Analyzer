@@ -144,6 +144,7 @@ const Dashboard = () => {
             setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
         } catch (err) {
             console.log(err);
+            alert(err.response?.data?.message || "Resume analysis failed. Please try again.");
         } finally {
             setLoading(false);
         }
