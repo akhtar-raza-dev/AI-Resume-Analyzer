@@ -2,13 +2,13 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDAIl6r5px6JVO-CXB3U1NQdR-2LMs_p78",
-  authDomain: "ai-resume-analyzer-81e34.firebaseapp.com",
-  projectId: "ai-resume-analyzer-81e34",
-  storageBucket: "ai-resume-analyzer-81e34.firebasestorage.app",
-  messagingSenderId: "318211684777",
-  appId: "1:318211684777:web:c3df6550aee5cf49e2ecb8",
-  measurementId: "G-LK3LYVHZK2"
+  apiKey: "AIzaSyAQU_JX8z8v5L7lkfzTP3ab9NMuABu_UEc",
+  authDomain: "resume-aii.firebaseapp.com",
+  projectId: "resume-aii",
+  storageBucket: "resume-aii.firebasestorage.app",
+  messagingSenderId: "29165814040",
+  appId: "1:29165814040:web:c4d78b8f879ffc1d431e6d",
+  measurementId: "G-M93XRNSD3L"
 };
 
 const app = initializeApp(firebaseConfig);

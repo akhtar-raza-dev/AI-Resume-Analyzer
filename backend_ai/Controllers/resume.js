@@ -1,96 +1,112 @@
+
 const ResumeModel = require('../Models/resume');
-const multer = require("multer");
 const pdfParse = require("pdf-parse");
-const path = require("path");
+const fs = require("fs");
 const { CohereClient } = require("cohere-ai");
 
 const cohere = new CohereClient({
-    token: "1zoGx0oj9dYRPX1ojDWV9ffO4i9YRDDZpTtDs0Bx",
+    token: process.env.COHERE_API_KEY,
 });
 
-
-exports.addResume = async (req, res) => {
+const addResume = async (req, res) => {
     try {
         const { job_desc, user } = req.body;
-        console.log(req.file)
-        const pdfBuffer = req.file.buffer || null;
+
         const pdfPath = req.file.path;
-        const fs = require("fs");
         const dataBuffer = fs.readFileSync(pdfPath);
         const pdfData = await pdfParse(dataBuffer);
 
         const prompt = `
-            You are a resume screening assistant.
-            Compare the following resume text with the provided Job Description (JD) and give a match score (0-100) and feedback.
+You are an AI resume screening assistant.
 
-            Resume:
-            ${pdfData.text}
+Return:
+Score: (0-100)
+Reason: explanation
 
-            Job Description:
-            ${job_desc}
+Resume:
+${pdfData.text}
 
-            Return the score and a brief explanation in this format:
-            Score: XX
-            Reason: ...
+Job Description:
+${job_desc}
+`;
 
-            `
-            ;
-        const response = await cohere.generate({
-            model: "command",
-            prompt: prompt,
-            max_tokens: 100,
+        const response = await cohere.chat({
+            model: "command-a-03-2025",
+            message: prompt,
             temperature: 0.7,
         });
 
-        let result = response.generations[0].text;
+        const resultText = response.text;
 
-        const match = result.match(/Score:\s*(\d+)/);
-        const score = match ? parseInt(match[1], 10) : null;
+        const scoreMatch = resultText.match(/Score:\s*(\d+)/i);
+        const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 0;
 
-        const reasonMatch = result.match(/Reason:\s*([\s\S]*)/);
-        const reason = reasonMatch ? reasonMatch[1].trim() : null;
+        const reasonMatch = resultText.match(/Reason:\s*([\s\S]*)/i);
+        const reason = reasonMatch ? reasonMatch[1].trim() : "No feedback";
+
+        const cleanReason = reason.replace(/^\*\*\s*/, "");
 
         const newResume = new ResumeModel({
             user,
             resume_name: req.file.originalname,
             job_desc,
             score,
-            feedback: reason
+            feedback: cleanReason
         });
 
         await newResume.save();
+        fs.unlinkSync(pdfPath);
 
-        fs.unlinkSync(pdfPath); // remove temp file
-
-        res.status(200).json({ message: "Your analysis are ready", data: newResume });
-
-
+        res.status(200).json({
+            message: "Analysis Ready",
+            data: newResume
+        });
 
     } catch (err) {
         console.log(err);
-        res.status(500).json({ error: 'Server error', message: err.message });
+        res.status(500).json({ message: err.message });
     }
-}
+};
 
-
-
-exports.getAllResumesForUser = async (req, res) => {
+const getAllResumesForUser = async (req, res) => {
     try {
         const { user } = req.params;
-        let resumes = await ResumeModel.find({ user: user }).sort({ createdAt: -1 });
-        return res.status(200).json({ message: "Your Previous History", resumes: resumes });
+        const resumes = await ResumeModel.find({ user }).sort({ createdAt: -1 });
+        res.status(200).json({ resumes });
     } catch (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'Server error', message: err.message });
+        res.status(500).json({ message: err.message });
     }
-}
+};
 
-exports.getResumeForAdmin = async (req, res) => {
+const getResumeForAdmin = async (req, res) => {
     try {
-        let resumes = await ResumeModel.find({}).sort({ createdAt: -1 }).populate('user');
-        return res.status(200).json({ message: "Fetched All History", resumes: resumes });
+        const resumes = await ResumeModel.find()
+            .sort({ createdAt: -1 })
+            .populate('user');
+
+        res.status(200).json({ resumes });
     } catch (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'Server error', message: err.message });
+        res.status(500).json({ message: err.message });
     }
-}
+};
+
+const deleteResume = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        await ResumeModel.findByIdAndDelete(id);
+
+        res.status(200).json({
+            message: "Resume deleted successfully",
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+module.exports = {
+    addResume,
+    getAllResumesForUser,
+    getResumeForAdmin,
+    deleteResume
+};
